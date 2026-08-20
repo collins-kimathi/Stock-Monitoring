@@ -9,7 +9,10 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  // Force Node.js to prefer IPv4 when DNS returns both families.
+  // Supabase direct connection only has an IPv6 record; the pooler has IPv4.
+  family: 4
 });
 
 export async function query(text, params) {
