@@ -1,0 +1,19 @@
+{
+  "name": "dekar-smartpos-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Express + PostgreSQL (Supabase) API for the Dekar SmartPOS + Inventory System",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "node --watch src/app.js",
+    "start": "node src/app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {}
+}
