@@ -22,9 +22,17 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+function qs(params) {
+  const query = Object.entries(params || {})
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  return query ? `?${query}` : '';
+}
+
 export const api = {
   products: {
-    list: () => request('/api/products'),
+    list: (params) => request(`/api/products${qs(params)}`),
     create: (payload) => request('/api/products', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) => request(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     remove: (id) => request(`/api/products/${id}`, { method: 'DELETE' })
@@ -36,6 +44,16 @@ export const api = {
   sales: {
     list: () => request('/api/sales'),
     create: (payload) => request('/api/sales', { method: 'POST', body: JSON.stringify(payload) })
+  },
+  movements: {
+    list: (params) => request(`/api/movements${qs(params)}`),
+    create: (payload) => request('/api/movements', { method: 'POST', body: JSON.stringify(payload) })
+  },
+  suppliers: {
+    list: () => request('/api/suppliers'),
+    create: (payload) => request('/api/suppliers', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => request(`/api/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    remove: (id) => request(`/api/suppliers/${id}`, { method: 'DELETE' })
   },
   dashboard: {
     get: () => request('/api/dashboard')

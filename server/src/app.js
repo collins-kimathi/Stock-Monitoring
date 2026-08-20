@@ -7,6 +7,8 @@ import productsRouter from './routes/products.js';
 import servicesRouter from './routes/services.js';
 import salesRouter from './routes/sales.js';
 import dashboardRouter from './routes/dashboard.js';
+import movementsRouter from './routes/movements.js';
+import suppliersRouter from './routes/suppliers.js';
 
 const app = express();
 app.use(express.json());
@@ -37,6 +39,8 @@ app.use('/api/products', productsRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/sales', salesRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/movements', movementsRouter);
+app.use('/api/suppliers', suppliersRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

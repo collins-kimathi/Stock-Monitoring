@@ -6,9 +6,25 @@
 create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------------
+-- suppliers: organisations/people you buy stock from.
+-- ---------------------------------------------------------------------------
+create table if not exists suppliers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  category text,
+  contact_person text,
+  phone text,
+  email text,
+  location text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_suppliers_category on suppliers (category);
+
+-- ---------------------------------------------------------------------------
 -- products: physical stock items sold across any category (Books, Stationery,
--- Printing, Cyber, Office, ...). New categories can be added without a schema
--- change since `category` is just text.
+-- Printing, Cyber, Office, ...). Adding categories needs no schema change.
 -- ---------------------------------------------------------------------------
 create table if not exists products (
   id uuid primary key default gen_random_uuid(),
@@ -20,12 +36,15 @@ create table if not exists products (
   reorder_level numeric not null default 0 check (reorder_level >= 0),
   buying_price numeric not null default 0 check (buying_price >= 0),
   selling_price numeric not null default 0 check (selling_price >= 0),
+  supplier_id uuid references suppliers (id) on delete set null,
+  is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_products_quantity on products (quantity);
 create index if not exists idx_products_category on products (category);
+create index if not exists idx_products_is_active on products (is_active);
 
 create or replace function set_updated_at()
 returns trigger as $$
@@ -40,6 +59,31 @@ create trigger trg_products_updated_at
   before update on products
   for each row
   execute function set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- stock_movements: the audit trail. `quantity` is signed — positive = stock
+-- in / correction up, negative = stock out / write-off. products.quantity is
+-- effectively a running balance over these rows. Nothing is ever edited in
+-- place; you always know what moved, why, and who authorised it.
+--   type          : stock_in (received) | stock_out (sold/used) | adjustment (manual correction)
+--   quantity      : signed magnitude (positive adds, negative removes)
+--   reference_type: what caused it (sale / purchase / manual adjustment)
+-- ---------------------------------------------------------------------------
+create table if not exists stock_movements (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid references products (id) on delete cascade,
+  type text not null check (type in ('stock_in', 'stock_out', 'adjustment')),
+  quantity numeric not null check (quantity <> 0),
+  reason text not null default '',
+  reference_type text,
+  reference_id uuid,
+  created_by uuid,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_movements_product on stock_movements (product_id);
+create index if not exists idx_movements_type on stock_movements (type);
+create index if not exists idx_movements_created on stock_movements (created_at desc);
 
 -- ---------------------------------------------------------------------------
 -- services: non-stock sellable items (cyber cafe services, printing, etc.)
@@ -76,9 +120,17 @@ create index if not exists idx_sales_created_at on sales (created_at desc);
 create index if not exists idx_sales_product_id on sales (product_id);
 
 -- ---------------------------------------------------------------------------
--- Seed data: a few starter cyber/print services so the Services page has
--- something to sell out of the box. Safe to edit or delete.
+-- Seed data: a few starter suppliers + services so the app is usable out of
+-- the box. Edit/delete freely.
 -- ---------------------------------------------------------------------------
+insert into suppliers (name, category, contact_person, phone, email, location)
+select * from (values
+  ('Kenya Book & Paper Supply', 'Books', 'Main Office', '0700 000 111', 'orders@kbps.co.ke', 'Nairobi'),
+  ('Stationery Wholesalers Ltd', 'Stationery', 'Sales Team', '0711 222 333', 'sales@swl.co.ke', 'Mombasa'),
+  ('Toner & Ink Suppliers', 'Printing', 'Accounts', '0722 333 444', 'orders@tisd.ke', 'Nairobi')
+) as seed(name, category, contact_person, phone, email, location)
+where not exists (select 1 from suppliers);
+
 insert into services (name, category, unit, price)
 select * from (values
   ('Black & White Printing', 'Printing', 'page', 5),

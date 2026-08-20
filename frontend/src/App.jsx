@@ -8,6 +8,8 @@ import { Inventory } from './pages/Inventory';
 import { Reports } from './pages/Reports';
 import { Sales } from './pages/Sales';
 import { Services } from './pages/Services';
+import { Movements } from './pages/Movements';
+import { Suppliers } from './pages/Suppliers';
 import { useInventoryData } from './hooks/useInventoryData';
 
 function buildDashboard(products, sales) {
@@ -39,7 +41,10 @@ function buildDashboard(products, sales) {
 export function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [toast, setToast] = useState('');
-  const { products, services, sales, loading, error, addProduct, recordSale } = useInventoryData();
+  const {
+    products, services, sales, movements, suppliers, loading, error,
+    addProduct, updateProduct, deactivateProduct, recordSale, addMovement, addSupplier, removeSupplier
+  } = useInventoryData();
   const dashboard = buildDashboard(products, sales);
 
   const showToast = (message) => {
@@ -52,28 +57,34 @@ export function App() {
   }, [error]);
 
   const handleAddProduct = async (payload) => {
-    try {
-      await addProduct(payload);
-      showToast('Product added to inventory');
-    } catch (err) {
-      showToast(err.message);
-    }
+    try { await addProduct(payload); showToast('Product added to inventory'); } catch (err) { showToast(err.message); }
   };
-
+  const handleUpdateProduct = async (id, payload) => {
+    try { await updateProduct(id, payload); showToast('Product updated'); } catch (err) { showToast(err.message); }
+  };
+  const handleDeactivateProduct = async (id) => {
+    try { await deactivateProduct(id); showToast('Product deactivated'); } catch (err) { showToast(err.message); }
+  };
   const handleRecordSale = async (payload) => {
-    try {
-      await recordSale(payload);
-      showToast('Sale recorded and stock updated');
-    } catch (err) {
-      showToast(err.message);
-    }
+    try { await recordSale(payload); showToast('Sale recorded & stock updated'); } catch (err) { showToast(err.message); }
+  };
+  const handleRestock = async (productId, quantity) => {
+    try { await addMovement({ productId, type: 'stock_in', quantity, reason: 'Restock' }); showToast('Stock received'); } catch (err) { showToast(err.message); }
+  };
+  const handleAddSupplier = async (payload) => {
+    try { await addSupplier(payload); showToast('Supplier added'); } catch (err) { showToast(err.message); }
+  };
+  const handleRemoveSupplier = async (id) => {
+    try { await removeSupplier(id); showToast('Supplier removed'); } catch (err) { showToast(err.message); }
   };
 
   const views = {
-    dashboard: <Dashboard dashboard={dashboard} sales={sales} />,
-    inventory: <Inventory products={products} onAddProduct={handleAddProduct} />,
+    dashboard: <Dashboard dashboard={dashboard} sales={sales} products={products} onNavigate={setActiveView} />,
+    inventory: <Inventory products={products} suppliers={suppliers} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} onDeactivateProduct={handleDeactivateProduct} onRestock={handleRestock} />,
     sales: <Sales products={products} onRecordSale={handleRecordSale} />,
     services: <Services services={services} onRecordSale={handleRecordSale} />,
+    movements: <Movements movements={movements} products={products} />,
+    suppliers: <Suppliers suppliers={suppliers} onAddSupplier={handleAddSupplier} onRemoveSupplier={handleRemoveSupplier} />,
     reports: <Reports dashboard={dashboard} products={products} sales={sales} />
   };
 
@@ -82,7 +93,7 @@ export function App() {
       <Sidebar activeView={activeView} setActiveView={setActiveView} />
       <main className="main-panel">
         <Topbar mode={dashboard?.mode} />
-        {loading ? <LoadingState /> : views[activeView]}
+        {loading && !products.length ? <LoadingState /> : views[activeView]}
       </main>
       <Toast message={toast} />
     </div>

@@ -1,10 +1,12 @@
-import { BarChart3, Boxes, LayoutDashboard, Printer, ShoppingCart, Sparkles } from 'lucide-react';
+import { BarChart3, Boxes, History, LayoutDashboard, Printer, ShoppingCart, Sparkles, Truck } from 'lucide-react';
 
 const navItems = [
   ['dashboard', LayoutDashboard, 'Dashboard'],
   ['inventory', Boxes, 'Inventory'],
   ['sales', ShoppingCart, 'Sales'],
   ['services', Printer, 'Cyber Services'],
+  ['movements', History, 'Movements'],
+  ['suppliers', Truck, 'Suppliers'],
   ['reports', BarChart3, 'Reports']
 ];
 

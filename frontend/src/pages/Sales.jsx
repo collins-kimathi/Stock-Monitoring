@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { Panel } from '../components/Panel';
 import { ReceiptPreview } from '../components/ReceiptPreview';
+import { EmptyState } from '../components/EmptyState';
 import { money } from '../lib/format';
 
 export function Sales({ products, onRecordSale }) {
@@ -9,7 +10,9 @@ export function Sales({ products, onRecordSale }) {
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const selected = products.find((product) => product.id === productId) || products[0];
+  const stock = Number(selected?.quantity || 0);
   const total = Number(quantity) * Number(selected?.sellingPrice || 0);
+  const blocked = !selected || stock <= 0 || Number(quantity) > stock;
 
   useEffect(() => {
     if (!productId && products[0]) setProductId(products[0].id);
@@ -32,17 +35,27 @@ export function Sales({ products, onRecordSale }) {
   return (
     <section className="split-view">
       <Panel title="Quick Sale" icon={ShoppingCart}>
-        <form className="sale-box" onSubmit={submit}>
-          <select value={productId} onChange={(event) => setProductId(event.target.value)}>
-            {products.map((product) => <option value={product.id} key={product.id}>{product.name}</option>)}
-          </select>
-          <input type="number" min="1" max={selected?.quantity || 1} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
-          <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
-            <option>Cash</option><option>M-Pesa</option><option>Card</option><option>Bank</option>
-          </select>
-          <div className="total-strip"><span>Total</span><strong>{money(total)}</strong></div>
-          <button className="primary-button" type="submit">Complete sale</button>
-        </form>
+        {products.length === 0 ? (
+          <EmptyState title="No stock to sell" hint="Add items in Inventory before recording sales." />
+        ) : (
+          <form className="sale-box" onSubmit={submit}>
+            <select value={productId} onChange={(event) => { setProductId(event.target.value); setQuantity(1); }}>
+              {products.map((product) => (
+                <option value={product.id} key={product.id} disabled={Number(product.quantity) === 0}>
+                  {product.name} — {Number(product.quantity)} {product.unit}
+                  {Number(product.quantity) === 0 ? ' (out)' : ''}
+                </option>
+              ))}
+            </select>
+            <input type="number" min="1" max={Math.max(1, stock)} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
+            <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+              <option>Cash</option><option>M-Pesa</option><option>Card</option><option>Bank</option>
+            </select>
+            <div className="stock-line"><span>In stock: {stock} {selected?.unit}</span>{stock <= Number(selected?.reorderLevel) ? <b className="low-flag">Low</b> : null}</div>
+            <div className="total-strip"><span>Total</span><strong>{money(total)}</strong></div>
+            <button className="primary-button" type="submit" disabled={blocked}>{blocked ? (stock <= 0 ? 'Out of stock' : 'Not enough stock') : 'Complete sale'}</button>
+          </form>
+        )}
       </Panel>
       <ReceiptPreview title={selected?.name} quantity={quantity} total={total} paymentMethod={paymentMethod} />
     </section>

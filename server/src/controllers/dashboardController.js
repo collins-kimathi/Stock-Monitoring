@@ -10,11 +10,12 @@ export async function getDashboard(req, res, next) {
   try {
     const today = new Date().toISOString().slice(0, 10);
 
-    const { rows: products } = await query('select * from products order by created_at desc');
+    const { rows: products } = await query('select * from products where is_active = true order by created_at desc');
     const { rows: sales } = await query('select * from sales order by created_at desc');
 
     const todaysSales = sales.filter((sale) => String(sale.created_at).slice(0, 10) === today);
     const lowStock = products.filter((product) => Number(product.quantity) <= Number(product.reorder_level));
+    const outOfStock = products.filter((product) => Number(product.quantity) === 0);
 
     const bestSellerMap = {};
     sales.forEach((sale) => {
@@ -28,6 +29,7 @@ export async function getDashboard(req, res, next) {
       totals: {
         products: products.length,
         lowStock: lowStock.length,
+        outOfStock: outOfStock.length,
         todaySales: todaysSales.length,
         revenue: todaysSales.reduce((sum, sale) => sum + Number(sale.total), 0),
         profit: todaysSales.reduce(
