@@ -4,6 +4,5 @@ dist/
 .env.local
 npm-debug.log*
 coverage/
-netlify.toml
-vercel.json
+
 

@@ -1,0 +1,14 @@
+[build]
+  # Directory where dependencies are installed + build runs (relative to this file).
+  base = "."
+  command = "npm run build"
+  # Vite writes static assets here; Netlify serves it as the publish root.
+  publish = "dist"
+
+# NOTE: This app navigates with in-app React state (no react-router), so there
+# is no client-side URL routing and no SPA fallback is required. Uncomment the
+# redirects block below only if you later add react-router / URL-based routing.
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
