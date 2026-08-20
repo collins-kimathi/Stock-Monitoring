@@ -32,7 +32,8 @@ export function Inventory({ products, suppliers, onAddProduct, onUpdateProduct, 
   const [category, setCategory] = useState('All');
   const [stockTab, setStockTab] = useState('all');
   const [form, setForm] = useState(blankForm);
-  const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState(null);
+  const [isAdding, setIsAdding] = useState(false);
   const [restockId, setRestockId] = useState(null);
   const [restockQty, setRestockQty] = useState(1);
   const [confirmId, setConfirmId] = useState(null);
@@ -47,13 +48,15 @@ export function Inventory({ products, suppliers, onAddProduct, onUpdateProduct, 
     return matchQuery && matchCategory && matchStock;
   });
 
-  const openAdd = () => {
+    const openAdd = () => {
     setEditingId(null);
     setForm(blankForm);
+    setIsAdding(true);
   };
 
-  const openEdit = (product) => {
+    const openEdit = (product) => {
     setEditingId(product.id);
+    setIsAdding(true);
     setForm({
       name: product.name,
       category: product.category,
@@ -77,10 +80,11 @@ export function Inventory({ products, suppliers, onAddProduct, onUpdateProduct, 
       sellingPrice: Number(form.sellingPrice),
       supplierId: form.supplierId || null
     };
-    if (editingId) await onUpdateProduct(editingId, payload);
+        if (editingId) await onUpdateProduct(editingId, payload);
     else await onAddProduct(payload);
     setEditingId(null);
     setForm(blankForm);
+    setIsAdding(false);
   };
 
   const submitRestock = async (event) => {
@@ -152,11 +156,11 @@ export function Inventory({ products, suppliers, onAddProduct, onUpdateProduct, 
           />
         ) : null}
       </Panel>
-{(editingId !== null || form.name !== '') ? (
+      {(editingId !== null || isAdding) ? (
         <Modal
           title={editingId ? 'Edit item' : 'Add product'}
           icon={editingId ? Pencil : PackagePlus}
-          onClose={() => { setEditingId(null); setForm(blankForm); }}
+          onClose={() => { setEditingId(null); setForm(blankForm); setIsAdding(false); }}
           footer={<button className="primary-button" form="product-form" type="submit">{editingId ? 'Save changes' : 'Add to inventory'}</button>}
         >
           <form id="product-form" className="modal-form" onSubmit={submit}>

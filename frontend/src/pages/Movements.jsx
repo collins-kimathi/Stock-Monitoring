@@ -53,13 +53,13 @@ export function Movements({ movements, products }) {
             </thead>
             <tbody>
               {filtered.map((m) => {
-                const meta = TYPE_META[m.type] || { label: m.type, tone: '' };
+                                const meta = TYPE_META[m.type] || { label: m.type, class: 'move-adjust' };
                 const positive = Number(m.quantity) > 0;
                 return (
                   <tr key={m.id}>
                     <td>{dateTime(m.createdAt)}</td>
                     <td><strong>{m.productName || 'Deleted item'}</strong><span>{m.referenceType || 'manual'}</span></td>
-                    <td><span className={`movement-badge ${meta.tone}`}>{meta.label}</span></td>
+                                        <td><span className={`movement-badge ${meta.class}`}>{meta.label}</span></td>
                     <td className={positive ? 'num-positive' : 'num-negative'}>{positive ? '+' : ''}{number(m.quantity)}</td>
                     <td>{m.reason || '—'}</td>
                   </tr>

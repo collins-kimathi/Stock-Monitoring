@@ -27,8 +27,8 @@ export async function moveStock(
   if (type === 'stock_in') signed = Math.abs(signed);
   if (type === 'stock_out') signed = -Math.abs(signed);
 
-  const run = (db) => {
-    const { rows } = db.query('select id, quantity from products where id = $1 for update', [productId]);
+    const run = async (db) => {
+    const { rows } = await db.query('select id, quantity from products where id = $1 for update', [productId]);
     const product = rows[0];
     if (!product) throw new ApiError(404, `Product ${productId} not found`);
 
@@ -37,20 +37,20 @@ export async function moveStock(
       throw new ApiError(400, `Insufficient stock: only ${Number(product.quantity)} available`);
     }
 
-    db.query('update products set quantity = $1 where id = $2', [next, productId]);
-    const movement = db.query(
+    await db.query('update products set quantity = $1 where id = $2', [next, productId]);
+    const movement = (await db.query(
       `insert into stock_movements (product_id, type, quantity, reason, reference_type, reference_id, created_by)
        values ($1, $2, $3, $4, $5, $6, $7)
        returning *`,
       [productId, type, signed, reason || '', referenceType, referenceId, createdBy]
-    ).rows[0];
+    )).rows[0];
     return { next, movement };
   };
 
   if (client) return run(client);
 
   return withTransaction(async (db) => {
-    const result = run(db);
+    const result = await run(db);
     return result;
   });
 }
