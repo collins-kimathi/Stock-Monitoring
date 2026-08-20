@@ -1,16 +1,14 @@
 import {
-  BarChart3, Boxes, History, LayoutDashboard, Printer,
-  ShoppingCart, Sparkles, Truck
+  BarChart3, Boxes, History, LayoutDashboard,
+  Sparkles, Truck
 } from 'lucide-react';
 
 const navItems = [
-  ['dashboard',  LayoutDashboard, 'Dashboard'],
-  ['inventory',  Boxes,           'Inventory'],
-  ['sales',      ShoppingCart,    'Sales'],
-  ['services',   Printer,         'Cyber Services'],
-  ['movements',  History,         'Movements'],
-  ['suppliers',  Truck,           'Suppliers'],
-  ['reports',    BarChart3,       'Reports'],
+  ['dashboard', LayoutDashboard, 'Dashboard & Alerts'],
+  ['inventory', Boxes,           'Inventory Catalog'],
+  ['movements', History,         'Stock Movements'],
+  ['suppliers', Truck,           'Suppliers & Vendors'],
+  ['reports',   BarChart3,       'Stock Valuation']
 ];
 
 export function Sidebar({ activeView, setActiveView }) {
@@ -19,8 +17,8 @@ export function Sidebar({ activeView, setActiveView }) {
       <div className="brand-block">
         <div className="brand-mark">D</div>
         <div>
-          <strong>Dekar SmartPOS</strong>
-          <span>Cyber &amp; Stationaries</span>
+          <strong>Dekar IMS</strong>
+          <span>Enterprise Inventory</span>
         </div>
       </div>
 
@@ -39,8 +37,8 @@ export function Sidebar({ activeView, setActiveView }) {
 
       <div className="sidebar-card">
         <Sparkles size={20} />
-        <strong>Smart retail mode</strong>
-        <span>Stock, services, receipts, and reports in one clean workspace.</span>
+        <strong>Enterprise Inventory</strong>
+        <span>Stock tracking, bulk CSV, reorder alerts, and audit logs.</span>
       </div>
     </aside>
   );

@@ -120,27 +120,9 @@ create index if not exists idx_sales_created_at on sales (created_at desc);
 create index if not exists idx_sales_product_id on sales (product_id);
 
 -- ---------------------------------------------------------------------------
--- Seed data: a few starter suppliers + services so the app is usable out of
--- the box. Edit/delete freely.
+-- Schema provisioned cleanly without dummy seeds.
+-- Real data is added via UI, CSV import, or API.
 -- ---------------------------------------------------------------------------
-insert into suppliers (name, category, contact_person, phone, email, location)
-select * from (values
-  ('Kenya Book & Paper Supply', 'Books', 'Main Office', '0700 000 111', 'orders@kbps.co.ke', 'Nairobi'),
-  ('Stationery Wholesalers Ltd', 'Stationery', 'Sales Team', '0711 222 333', 'sales@swl.co.ke', 'Mombasa'),
-  ('Toner & Ink Suppliers', 'Printing', 'Accounts', '0722 333 444', 'orders@tisd.ke', 'Nairobi')
-) as seed(name, category, contact_person, phone, email, location)
-where not exists (select 1 from suppliers);
-
-insert into services (name, category, unit, price)
-select * from (values
-  ('Black & White Printing', 'Printing', 'page', 5),
-  ('Colour Printing', 'Printing', 'page', 20),
-  ('Photocopying', 'Printing', 'page', 5),
-  ('Lamination', 'Cyber', 'page', 30),
-  ('Internet Browsing', 'Cyber', 'hour', 50),
-  ('Document Scanning', 'Cyber', 'page', 10)
-) as seed(name, category, unit, price)
-where not exists (select 1 from services);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: left disabled for now because the Express backend talks

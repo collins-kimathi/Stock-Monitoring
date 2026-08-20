@@ -1,46 +1,84 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 
-/**
- * Central data hook: loads products/services/sales plus the stock-movement
- * audit trail and suppliers, and exposes CRUD/stock actions that hit the API
- * then refresh local state. Components keep receiving the same field names.
- */
 export function useInventoryData() {
   const [products, setProducts] = useState([]);
-  const [services, setServices] = useState([]);
-  const [sales, setSales] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 25,
+    totalPages: 1
+  });
+  const [summary, setSummary] = useState(null);
   const [movements, setMovements] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState('');
 
-  const refresh = async () => {
-    setLoading(true);
+  // Fetch paginated products with filters
+  const fetchProducts = useCallback(async (params = {}) => {
+    setIsFetching(true);
     try {
-      const [productRows, serviceRows, saleRows, movementRows, supplierRows] = await Promise.all([
-        api.products.list(),
-        api.services.list(),
-        api.sales.list(),
-        api.movements.list(),
-        api.suppliers.list()
-      ]);
-      setProducts(productRows);
-      setServices(serviceRows);
-      setSales(saleRows);
-      setMovements(movementRows);
-      setSuppliers(supplierRows.filter((s) => s.isActive !== false));
+      const res = await api.products.list(params);
+      if (res && res.data && res.pagination) {
+        setProducts(res.data);
+        setPagination(res.pagination);
+        if (res.summary) setSummary(res.summary);
+      } else if (Array.isArray(res)) {
+        setProducts(res);
+      }
       setError('');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to load products');
     } finally {
-      setLoading(false);
+      setIsFetching(false);
+      setInitialLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch inventory summary overview
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await api.products.summary();
+      setSummary(data);
+    } catch (err) {
+      console.error('Failed to fetch summary:', err);
+    }
+  }, []);
+
+  // Fetch initial core data once on mount
+  const refresh = useCallback(async () => {
+    try {
+      const [prodRes, moveRes, supRes, sumRes] = await Promise.all([
+        api.products.list({ page: 1, limit: 25 }),
+        api.movements.list(),
+        api.suppliers.list(),
+        api.products.summary().catch(() => null)
+      ]);
+
+      if (prodRes?.data) {
+        setProducts(prodRes.data);
+        setPagination(prodRes.pagination);
+      } else if (Array.isArray(prodRes)) {
+        setProducts(prodRes);
+      }
+
+      setMovements(moveRes || []);
+      setSuppliers((supRes || []).filter((s) => s.isActive !== false));
+      if (sumRes) setSummary(sumRes);
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Failed to load data');
+    } finally {
+      setInitialLoading(false);
+      setIsFetching(false);
+    }
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
 
   const addProduct = async (payload) => {
     await api.products.create(payload);
@@ -57,14 +95,15 @@ export function useInventoryData() {
     await refresh();
   };
 
-  const recordSale = async (payload) => {
-    await api.sales.create(payload);
-    await refresh();
-  };
-
   const addMovement = async (payload) => {
     await api.movements.create(payload);
     await refresh();
+  };
+
+  const importProductsCsv = async (items) => {
+    const res = await api.products.importCsv(items);
+    await refresh();
+    return res;
   };
 
   const addSupplier = async (payload) => {
@@ -79,18 +118,21 @@ export function useInventoryData() {
 
   return {
     products,
-    services,
-    sales,
+    pagination,
+    summary,
     movements,
     suppliers,
-    loading,
+    initialLoading,
+    isFetching,
     error,
     refresh,
+    fetchProducts,
+    fetchSummary,
     addProduct,
     updateProduct,
     deactivateProduct,
-    recordSale,
     addMovement,
+    importProductsCsv,
     addSupplier,
     removeSupplier
   };

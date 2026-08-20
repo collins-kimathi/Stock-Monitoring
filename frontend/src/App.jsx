@@ -1,55 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoadingState } from './components/LoadingState';
 import { Sidebar } from './components/Sidebar';
+import { MobileNav } from './components/MobileNav';
 import { Toast } from './components/Toast';
 import { Topbar } from './components/Topbar';
 import { Dashboard } from './pages/Dashboard';
 import { Inventory } from './pages/Inventory';
 import { Reports } from './pages/Reports';
-import { Sales } from './pages/Sales';
-import { Services } from './pages/Services';
 import { Movements } from './pages/Movements';
 import { Suppliers } from './pages/Suppliers';
 import { useInventoryData } from './hooks/useInventoryData';
 
-function buildDashboard(products, sales) {
-  const today = new Date().toISOString().slice(0, 10);
-  const todaysSales = sales.filter((sale) => String(sale.createdAt).slice(0, 10) === today);
-  const lowStock = products.filter((product) => Number(product.quantity) <= Number(product.reorderLevel));
-
-  return {
-    mode: 'mysql',
-    totals: {
-      products: products.length,
-      lowStock: lowStock.length,
-      todaySales: todaysSales.length,
-      revenue: todaysSales.reduce((sum, sale) => sum + Number(sale.total), 0),
-      profit: todaysSales.reduce((sum, sale) => sum + ((Number(sale.unitPrice) - Number(sale.costPrice || 0)) * Number(sale.quantity)), 0),
-      expenses: 0,
-      inventoryValue: products.reduce((sum, product) => sum + Number(product.quantity) * Number(product.buyingPrice), 0)
-    },
-    lowStock,
-    bestSellers: Object.values(sales.reduce((acc, sale) => {
-      acc[sale.itemName] ||= { name: sale.itemName, quantity: 0, revenue: 0 };
-      acc[sale.itemName].quantity += Number(sale.quantity);
-      acc[sale.itemName].revenue += Number(sale.total);
-      return acc;
-    }, {})).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
-  };
-}
-
 export function App() {
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState('inventory');
   const [toast, setToast] = useState('');
+
   const {
-    products, services, sales, movements, suppliers, loading, error,
-    addProduct, updateProduct, deactivateProduct, recordSale, addMovement, addSupplier, removeSupplier
+    products,
+    pagination,
+    summary,
+    movements,
+    suppliers,
+    initialLoading,
+    isFetching,
+    error,
+    fetchProducts,
+    addProduct,
+    updateProduct,
+    deactivateProduct,
+    addMovement,
+    importProductsCsv,
+    addSupplier,
+    removeSupplier
   } = useInventoryData();
-  const dashboard = buildDashboard(products, sales);
 
   const showToast = (message) => {
     setToast(message);
-    window.setTimeout(() => setToast(''), 2400);
+    window.setTimeout(() => setToast(''), 2600);
   };
 
   useEffect(() => {
@@ -57,44 +44,156 @@ export function App() {
   }, [error]);
 
   const handleAddProduct = async (payload) => {
-    try { await addProduct(payload); showToast('Product added to inventory'); } catch (err) { showToast(err.message); }
+    try {
+      await addProduct(payload);
+      showToast('Product successfully added to inventory');
+    } catch (err) {
+      showToast(err.message || 'Failed to add product');
+    }
   };
+
   const handleUpdateProduct = async (id, payload) => {
-    try { await updateProduct(id, payload); showToast('Product updated'); } catch (err) { showToast(err.message); }
+    try {
+      await updateProduct(id, payload);
+      showToast('Product details updated');
+    } catch (err) {
+      showToast(err.message || 'Failed to update product');
+    }
   };
+
   const handleDeactivateProduct = async (id) => {
-    try { await deactivateProduct(id); showToast('Product deactivated'); } catch (err) { showToast(err.message); }
+    try {
+      await deactivateProduct(id);
+      showToast('Product deactivated from catalog');
+    } catch (err) {
+      showToast(err.message || 'Failed to deactivate product');
+    }
   };
-  const handleRecordSale = async (payload) => {
-    try { await recordSale(payload); showToast('Sale recorded & stock updated'); } catch (err) { showToast(err.message); }
+
+  const handleRestock = async (productId, quantity, reason = 'Supplier Restock') => {
+    try {
+      await addMovement({
+        productId,
+        type: 'stock_in',
+        quantity,
+        reason
+      });
+      showToast(`Restocked +${quantity} units recorded in audit log`);
+    } catch (err) {
+      showToast(err.message || 'Failed to record restock');
+    }
   };
-  const handleRestock = async (productId, quantity) => {
-    try { await addMovement({ productId, type: 'stock_in', quantity, reason: 'Restock' }); showToast('Stock received'); } catch (err) { showToast(err.message); }
+
+  const handleStockOut = async (productId, quantity, reason = 'Issued / Stock Out') => {
+    try {
+      await addMovement({
+        productId,
+        type: 'stock_out',
+        quantity,
+        reason
+      });
+      showToast(`Stock out −${quantity} units logged in audit trail`);
+    } catch (err) {
+      showToast(err.message || 'Failed to record stock out');
+    }
   };
+
+  const handleImportCsv = async (items) => {
+    try {
+      const res = await importProductsCsv(items);
+      showToast(`Imported ${res.createdCount} new, updated ${res.updatedCount} items`);
+      return res;
+    } catch (err) {
+      showToast(err.message || 'Import failed');
+      throw err;
+    }
+  };
+
   const handleAddSupplier = async (payload) => {
-    try { await addSupplier(payload); showToast('Supplier added'); } catch (err) { showToast(err.message); }
+    try {
+      await addSupplier(payload);
+      showToast('Supplier successfully saved');
+    } catch (err) {
+      showToast(err.message || 'Failed to save supplier');
+    }
   };
+
   const handleRemoveSupplier = async (id) => {
-    try { await removeSupplier(id); showToast('Supplier removed'); } catch (err) { showToast(err.message); }
+    try {
+      await removeSupplier(id);
+      showToast('Supplier removed');
+    } catch (err) {
+      showToast(err.message || 'Failed to remove supplier');
+    }
   };
 
   const views = {
-    dashboard: <Dashboard dashboard={dashboard} sales={sales} products={products} onNavigate={setActiveView} />,
-    inventory: <Inventory products={products} suppliers={suppliers} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} onDeactivateProduct={handleDeactivateProduct} onRestock={handleRestock} />,
-    sales: <Sales products={products} onRecordSale={handleRecordSale} />,
-    services: <Services services={services} onRecordSale={handleRecordSale} />,
-    movements: <Movements movements={movements} products={products} />,
-    suppliers: <Suppliers suppliers={suppliers} onAddSupplier={handleAddSupplier} onRemoveSupplier={handleRemoveSupplier} />,
-    reports: <Reports dashboard={dashboard} products={products} sales={sales} />
+    dashboard: (
+      <Dashboard
+        summary={summary}
+        products={products}
+        movements={movements}
+        onNavigate={setActiveView}
+      />
+    ),
+    inventory: (
+      <Inventory
+        products={products}
+        pagination={pagination}
+        suppliers={suppliers}
+        isFetching={isFetching}
+        onAddProduct={handleAddProduct}
+        onUpdateProduct={handleUpdateProduct}
+        onDeactivateProduct={handleDeactivateProduct}
+        onRestock={handleRestock}
+        onStockOut={handleStockOut}
+        onImportCsv={handleImportCsv}
+        fetchProducts={fetchProducts}
+      />
+    ),
+    movements: (
+      <Movements
+        movements={movements}
+        products={products}
+      />
+    ),
+    suppliers: (
+      <Suppliers
+        suppliers={suppliers}
+        onAddSupplier={handleAddSupplier}
+        onRemoveSupplier={handleRemoveSupplier}
+      />
+    ),
+    reports: (
+      <Reports
+        dashboard={{ summary, totals: summary }}
+        products={products}
+        sales={[]}
+      />
+    )
   };
 
   return (
     <div className="app-shell">
+      {/* Desktop Sidebar */}
       <Sidebar activeView={activeView} setActiveView={setActiveView} />
+
+      {/* Mobile Top Navigation & Drawer */}
+      <MobileNav
+        activeView={activeView}
+        setActiveView={setActiveView}
+        mode="mysql"
+      />
+
       <main className="main-panel">
-        <Topbar mode={dashboard?.mode} />
-        {loading && !products.length ? <LoadingState /> : views[activeView]}
+        <Topbar mode="mysql" />
+        {initialLoading ? (
+          <LoadingState />
+        ) : (
+          views[activeView] || views.inventory
+        )}
       </main>
+
       <Toast message={toast} />
     </div>
   );

@@ -1,148 +1,206 @@
 import {
-  AlertTriangle, BarChart3, Boxes, PackageX, ReceiptText,
-  TrendingUp, Wallet, DollarSign
+  AlertTriangle, Boxes, CheckCircle2, DollarSign,
+  PackageX, ShieldAlert, TrendingUp, Wallet, ArrowRight,
+  Layers, MapPin, Truck
 } from 'lucide-react';
 import { Panel } from '../components/Panel';
-import { TransactionList } from '../components/TransactionList';
 import { EmptyState } from '../components/EmptyState';
-import { money } from '../lib/format';
+import { StockBadge } from '../components/StockBadge';
+import { money, number } from '../lib/format';
 
-// Each card: [label, value, Icon, accent gradient, icon bg colour, icon text colour]
-function buildStats(totals, outOfStock) {
-  return [
-    [
-      'Total Products', totals.products, Boxes,
-      'linear-gradient(90deg,#6366f1,#818cf8)',
-      'rgba(99,102,241,0.15)', '#818cf8'
-    ],
-    [
-      'Stock Value', money(totals.inventoryValue), Wallet,
-      'linear-gradient(90deg,#7c3aed,#a78bfa)',
-      'rgba(124,58,237,0.15)', '#a78bfa'
-    ],
-    [
-      'Low Stock Items', totals.lowStock, AlertTriangle,
-      'linear-gradient(90deg,#f59e0b,#fbbf24)',
-      'rgba(245,158,11,0.15)', '#fbbf24'
-    ],
-    [
-      'Out of Stock', outOfStock, PackageX,
-      'linear-gradient(90deg,#ef4444,#f87171)',
-      'rgba(239,68,68,0.15)', '#f87171'
-    ],
-    [
-      "Today's Revenue", money(totals.revenue), DollarSign,
-      'linear-gradient(90deg,#10b981,#34d399)',
-      'rgba(16,185,129,0.15)', '#34d399'
-    ],
-    [
-      "Today's Profit", money(totals.profit), TrendingUp,
-      'linear-gradient(90deg,#06b6d4,#38bdf8)',
-      'rgba(6,182,212,0.15)', '#38bdf8'
-    ],
+export function Dashboard({ summary, products, movements, onNavigate }) {
+  const s = summary || {};
+  const totalSkus = s.totalSkus || products.length || 0;
+  const totalUnits = s.totalUnits || products.reduce((acc, p) => acc + Number(p.quantity || 0), 0);
+  const totalCostValue = s.totalCostValue || products.reduce((acc, p) => acc + (Number(p.quantity || 0) * Number(p.buyingPrice || 0)), 0);
+  const totalRetailValue = s.totalRetailValue || products.reduce((acc, p) => acc + (Number(p.quantity || 0) * Number(p.sellingPrice || 0)), 0);
+  const potentialProfit = totalRetailValue - totalCostValue;
+  const lowStockCount = s.lowStockCount || products.filter(p => Number(p.quantity) <= Number(p.reorderLevel) && Number(p.quantity) > 0).length;
+  const outOfStockCount = s.outOfStockCount || products.filter(p => Number(p.quantity) <= 0).length;
+  const healthyStockCount = s.healthyStockCount || products.filter(p => Number(p.quantity) > Number(p.reorderLevel)).length;
+
+  const lowStockItems = products.filter(p => Number(p.quantity) <= Number(p.reorderLevel));
+  const recentMovements = (movements || []).slice(0, 5);
+
+  const stats = [
+    {
+      label: 'Total Active SKUs',
+      value: number(totalSkus),
+      hint: `${number(totalUnits)} units in stock`,
+      Icon: Boxes,
+      accent: 'linear-gradient(90deg, #6366f1, #818cf8)',
+      iconBg: 'rgba(99,102,241,0.15)',
+      iconColor: '#818cf8'
+    },
+    {
+      label: 'Inventory Valuation (Cost)',
+      value: money(totalCostValue),
+      hint: 'Capital invested in stock',
+      Icon: Wallet,
+      accent: 'linear-gradient(90deg, #7c3aed, #a78bfa)',
+      iconBg: 'rgba(124,58,237,0.15)',
+      iconColor: '#a78bfa'
+    },
+    {
+      label: 'Potential Retail Value',
+      value: money(totalRetailValue),
+      hint: `Est. Gross Profit: ${money(potentialProfit)}`,
+      Icon: DollarSign,
+      accent: 'linear-gradient(90deg, #10b981, #34d399)',
+      iconBg: 'rgba(16,185,129,0.15)',
+      iconColor: '#34d399'
+    },
+    {
+      label: 'Low Stock Alerts',
+      value: number(lowStockCount),
+      hint: 'Items at or below reorder level',
+      Icon: AlertTriangle,
+      accent: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+      iconBg: 'rgba(245,158,11,0.15)',
+      iconColor: '#fbbf24'
+    },
+    {
+      label: 'Out of Stock',
+      value: number(outOfStockCount),
+      hint: 'Requires immediate replenishment',
+      Icon: PackageX,
+      accent: 'linear-gradient(90deg, #ef4444, #f87171)',
+      iconBg: 'rgba(239,68,68,0.15)',
+      iconColor: '#f87171'
+    },
+    {
+      label: 'Healthy Stock Items',
+      value: number(healthyStockCount),
+      hint: 'Adequately stocked',
+      Icon: CheckCircle2,
+      accent: 'linear-gradient(90deg, #06b6d4, #38bdf8)',
+      iconBg: 'rgba(6,182,212,0.15)',
+      iconColor: '#38bdf8'
+    }
   ];
-}
-
-export function Dashboard({ dashboard, sales, products, onNavigate }) {
-  const totals = dashboard?.totals || {};
-  const outOfStock = products.filter((p) => Number(p.quantity) === 0).length;
-  const stats = buildStats(totals, outOfStock);
-
-  const maxRevenue = Math.max(1, ...(dashboard?.bestSellers || []).map((s) => s.revenue));
 
   return (
     <section className="view-stack">
-      {/* ── Metric cards ── */}
+      {/* ── KPI Metrics Grid ── */}
       <div className="metric-grid">
-        {stats.map(([label, value, Icon, accent, iconBg, iconColor]) => (
+        {stats.map((item) => (
           <article
             className="metric-card"
-            key={label}
-            style={{ '--card-accent': accent }}
+            key={item.label}
+            style={{ '--card-accent': item.accent }}
           >
             <div
               className="metric-icon"
-              style={{ '--icon-bg': iconBg, '--icon-color': iconColor }}
+              style={{ '--icon-bg': item.iconBg, '--icon-color': item.iconColor }}
             >
-              <Icon size={20} />
+              <item.Icon size={20} />
             </div>
-            <span>{label}</span>
-            <strong>{value ?? 0}</strong>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <small className="metric-hint">{item.hint}</small>
           </article>
         ))}
       </div>
 
-      {/* ── Dashboard grid ── */}
+      {/* ── Dashboard Split Grid ── */}
       <div className="dashboard-grid">
-        <Panel title="Low Stock Alerts" icon={AlertTriangle}>
-          {dashboard?.lowStock?.length ? (
+        {/* Low Stock Warning Panel */}
+        <Panel title="Critical Reorder Alerts" icon={AlertTriangle}>
+          {lowStockItems.length > 0 ? (
             <div className="alert-list">
-              {dashboard.lowStock.map((item) => (
+              {lowStockItems.slice(0, 6).map((item) => (
                 <div className="alert-row" key={item.id}>
                   <div>
                     <strong>{item.name}</strong>
                     <span>
-                      {Number(item.quantity)} {item.unit} remaining
-                      (min {Number(item.reorderLevel)})
+                      {Number(item.quantity)} {item.unit} on hand (Reorder threshold: {item.reorderLevel})
                     </span>
                   </div>
-                  <b>⚠ Restock</b>
+                  <StockBadge product={item} />
                 </div>
               ))}
             </div>
           ) : (
             <EmptyState
-              title="No low-stock alerts"
-              hint="All active items are above their reorder level."
+              title="All stock levels healthy"
+              hint="No items are currently below their designated reorder threshold."
             />
           )}
-          {dashboard?.lowStock?.length ? (
+
+          <div style={{ marginTop: 14 }}>
             <button
               className="secondary-button"
-              style={{ marginTop: 14 }}
               onClick={() => onNavigate('inventory')}
             >
-              Manage inventory
+              <span>View Full Inventory Catalog</span>
+              <ArrowRight size={15} />
             </button>
-          ) : null}
+          </div>
         </Panel>
 
-        <Panel title="Recent Transactions" icon={ReceiptText}>
-          {sales.length ? (
-            <TransactionList sales={sales.slice(0, 6)} />
+        {/* Recent Stock Movements / Audit */}
+        <Panel title="Recent Stock Activity" icon={TrendingUp}>
+          {recentMovements.length > 0 ? (
+            <div className="transaction-list">
+              {recentMovements.map((m) => {
+                const positive = Number(m.quantity) > 0;
+                return (
+                  <div className="transaction-row" key={m.id}>
+                    <div>
+                      <strong>{m.productName || 'Stock Movement'}</strong>
+                      <span>{m.reason || m.type}</span>
+                    </div>
+                    <b className={positive ? 'num-positive' : 'num-negative'}>
+                      {positive ? '+' : ''}{number(m.quantity)}
+                    </b>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <EmptyState
-              title="No sales yet"
-              hint="Record a sale on the Sales screen and it will appear here."
+              title="No recent stock movements"
+              hint="Restocks, adjustments, and receipts will be recorded here."
             />
           )}
+
+          <div style={{ marginTop: 14 }}>
+            <button
+              className="secondary-button"
+              onClick={() => onNavigate('movements')}
+            >
+              <span>View Stock Audit Log</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
         </Panel>
       </div>
 
-      {/* ── Best sellers bar chart ── */}
-      <Panel title="Best Sellers" icon={BarChart3}>
-        {dashboard?.bestSellers?.length ? (
-          <div className="bar-list">
-            {dashboard.bestSellers.map((item) => {
-              const pct = Math.max(4, Math.round((item.revenue / maxRevenue) * 100));
+      {/* ── Category Valuation Breakdown ── */}
+      {s.categories && s.categories.length > 0 && (
+        <Panel title="Stock Valuation by Category" icon={Layers}>
+          <div className="category-valuation-grid">
+            {s.categories.map((c) => {
+              const pct = totalCostValue > 0 ? Math.round((c.value / totalCostValue) * 100) : 0;
               return (
-                <div className="bar-row" key={item.name}>
-                  <span title={item.name}>{item.name}</span>
-                  <div>
-                    <i style={{ width: `${pct}%` }} />
+                <div className="cat-val-card" key={c.category}>
+                  <div className="cat-val-head">
+                    <strong>{c.category}</strong>
+                    <span>{pct}% of inventory</span>
                   </div>
-                  <b>{money(item.revenue)}</b>
+                  <div className="cat-val-numbers">
+                    <b>{money(c.value)}</b>
+                    <small>{number(c.units)} units ({c.count} SKUs)</small>
+                  </div>
+                  <div className="cat-val-bar">
+                    <div style={{ width: `${Math.min(100, Math.max(3, pct))}%` }} />
+                  </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <EmptyState
-            title="No sales data yet"
-            hint="Best sellers will appear once you record sales."
-          />
-        )}
-      </Panel>
+        </Panel>
+      )}
     </section>
   );
 }

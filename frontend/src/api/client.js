@@ -1,4 +1,4 @@
-// Base URL for the Express backend. Defaults to the local dev server.
+// Base URL for the Express backend. Defaults to local dev server.
 export const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:4000';
 
 async function request(path, options = {}) {
@@ -13,7 +13,7 @@ async function request(path, options = {}) {
       const body = await response.json();
       if (body?.error) message = body.error;
     } catch {
-      // fall back to the status message
+      // fallback
     }
     throw new Error(message);
   }
@@ -33,9 +33,12 @@ function qs(params) {
 export const api = {
   products: {
     list: (params) => request(`/api/products${qs(params)}`),
+    summary: () => request('/api/products/summary'),
     create: (payload) => request('/api/products', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) => request(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-    remove: (id) => request(`/api/products/${id}`, { method: 'DELETE' })
+    remove: (id) => request(`/api/products/${id}`, { method: 'DELETE' }),
+    importCsv: (items) => request('/api/products/import', { method: 'POST', body: JSON.stringify({ items }) }),
+    exportCsvUrl: () => `${API_URL}/api/products/export`
   },
   services: {
     list: () => request('/api/services'),
